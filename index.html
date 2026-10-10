@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#16a34a">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="轻食卡">
+<meta name="description" content="轻食卡 · 单页热量计算器，内置常见食物营养数据，移动端友好的健康饮食助手">
+<title>轻食卡 · 热量计算器</title>
+<style>
+  :root{
+    --green:#22c55e;
+    --green-deep:#15803d;
+    --green-dark:#16a34a;
+    --ink:#14532d;
+    --muted:#5b7a68;
+    --line:#d7f0e0;
+    --bg-soft:#eefaf2;
+    --white:#ffffff;
+    --radius:18px;
+    --shadow:0 6px 20px rgba(21,128,61,.10);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    color:var(--ink);
+    background:var(--white);
+    min-height:100vh;
+    line-height:1.55;
+  }
+  .app{
+    max-width:520px;
+    margin:0 auto;
+    padding:0 16px calc(32px + env(safe-area-inset-bottom));
+  }
+
+  /* 顶部 */
+  .hero{
+    margin:0 -16px 18px;
+    padding:26px 20px 30px;
+    background:linear-gradient(160deg,#22c55e 0%,#16a34a 55%,#15803d 100%);
+    color:#fff;
+    border-radius:0 0 26px 26px;
+    padding-top:calc(26px + env(safe-area-inset-top));
+  }
+  .brand{display:flex;align-items:center;gap:9px;font-size:13px;opacity:.9}
+  .leaf{
+    width:20px;height:20px;border-radius:50%;
+    background:rgba(255,255,255,.22);
+    display:inline-flex;align-items:center;justify-content:center;font-size:12px;
+  }
+  .hero h1{margin:8px 0 4px;font-size:25px;letter-spacing:.5px}
+  .hero p{margin:0;font-size:13px;opacity:.88}
+  .hero-stats{display:flex;gap:18px;margin-top:16px}
+  .hero-stats div{font-size:12px;opacity:.85}
+  .hero-stats b{display:block;font-size:19px;font-weight:600;opacity:1}
+
+  /* 卡片 */
+  .card{
+    background:var(--white);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    box-shadow:var(--shadow);
+    padding:18px 16px;
+    margin-top:-6px;
+  }
+  .label{
+    display:block;
+    font-size:13px;font-weight:600;color:var(--green-deep);
+    margin-bottom:8px;
+  }
+
+  /* 输入 */
+  .field{position:relative;margin-bottom:16px}
+  input[type=text],input[type=number]{
+    width:100%;
+    font-size:16px; /* 防止 iOS 聚焦缩放 */
+    font-family:inherit;
+    color:var(--ink);
+    padding:14px 14px;
+    border:1.5px solid var(--line);
+    border-radius:14px;
+    background:var(--bg-soft);
+    outline:none;
+    transition:border-color .15s,background .15s;
+  }
+  input:focus{border-color:var(--green);background:#fff}
+  input::placeholder{color:#94b3a3}
+
+  .suggest{
+    position:absolute;left:0;right:0;top:calc(100% + 6px);
+    background:#fff;border:1px solid var(--line);border-radius:14px;
+    box-shadow:0 10px 26px rgba(21,128,61,.16);
+    z-index:20;overflow:hidden;max-height:270px;overflow-y:auto;
+    display:none;
+  }
+  .suggest.show{display:block}
+  .suggest li{
+    list-style:none;padding:13px 14px;font-size:15px;
+    border-bottom:1px solid #f0f8f3;cursor:pointer;
+    display:flex;justify-content:space-between;align-items:center;gap:10px;
+  }
+  .suggest li:last-child{border-bottom:none}
+  .suggest li:active{background:var(--bg-soft)}
+  .suggest li .k{font-size:12px;color:var(--muted);white-space:nowrap}
+  .suggest .empty{padding:14px;font-size:14px;color:var(--muted);text-align:center}
+
+  /* 份量行 */
+  .row{display:flex;gap:10px;align-items:stretch}
+  .row .amount{flex:1.1}
+  .row .unitwrap{flex:1}
+  .seg{display:flex;background:var(--bg-soft);border:1.5px solid var(--line);border-radius:14px;overflow:hidden;height:100%}
+  .seg button{
+    flex:1;border:0;background:transparent;font-size:15px;font-family:inherit;
+    color:var(--muted);padding:0 6px;cursor:pointer;transition:.15s;
+  }
+  .seg button[aria-pressed=true]{background:var(--green);color:#fff;font-weight:600}
+  .seg button:disabled{opacity:.4;cursor:not-allowed}
+
+  .hint{font-size:12px;color:var(--muted);margin:8px 0 0;min-height:17px}
+
+  /* 按钮 */
+  .btn{
+    width:100%;border:0;border-radius:14px;
+    padding:16px;font-size:17px;font-weight:600;font-family:inherit;
+    color:#fff;background:linear-gradient(135deg,#22c55e,#15803d);
+    box-shadow:0 6px 16px rgba(21,128,61,.28);
+    cursor:pointer;margin-top:18px;
+  }
+  .btn:active{transform:translateY(1px);box-shadow:0 3px 10px rgba(21,128,61,.24)}
+
+  /* 快捷标签 */
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+  .chip{
+    border:1px solid var(--line);background:var(--bg-soft);color:var(--green-deep);
+    font-size:13px;font-family:inherit;padding:8px 13px;border-radius:999px;cursor:pointer;
+  }
+  .chip:active{background:var(--green);color:#fff}
+  .chips-title{font-size:12px;color:var(--muted);margin:16px 0 0}
+
+  /* 结果 */
+  .result{
+    margin-top:16px;display:none;
+    background:linear-gradient(160deg,#f0fdf4,#e7f9ee);
+    border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);padding:20px 16px;
+    animation:pop .22s ease-out;
+  }
+  .result.show{display:block}
+  @keyframes pop{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .result-cap{font-size:12px;color:var(--muted);text-align:center;letter-spacing:1px}
+  .kcal{
+    text-align:center;font-size:52px;font-weight:700;color:var(--green-deep);
+    line-height:1.1;margin:2px 0 0;
+  }
+  .kcal span{font-size:17px;font-weight:600;margin-left:4px}
+  .kj{text-align:center;font-size:13px;color:var(--muted);margin-top:2px}
+  .meta{margin-top:16px;border-top:1px dashed #bfe6cd;padding-top:14px}
+  .meta div{display:flex;justify-content:space-between;gap:12px;font-size:14px;padding:5px 0}
+  .meta dt{color:var(--muted);flex:none}
+  .meta dd{margin:0;text-align:right;font-weight:600}
+  .walk{
+    margin-top:14px;background:#fff;border-radius:12px;padding:12px 14px;
+    font-size:13px;color:var(--green-deep);display:flex;align-items:center;gap:8px;
+  }
+  .tip{
+    margin-top:14px;font-size:12px;color:var(--muted);
+    background:#fff;border-left:3px solid var(--green);border-radius:8px;padding:10px 12px;
+  }
+  .err{color:#b45309}
+
+  .disclaimer{font-size:12px;color:#7d9c8b;text-align:center;margin:20px 4px 0;line-height:1.7}
+  footer{text-align:center;font-size:11px;color:#9dbfae;padding:14px 0 0}
+</style>
+</head>
+<body>
+<main class="app">
+  <div class="hero">
+    <div class="brand"><i class="leaf">🍃</i> 轻食卡 · 健康饮食助手</div>
+    <h1>热量计算器</h1>
+    <p>输入食物与份量，即刻估算能量摄入</p>
+    <div class="hero-stats">
+      <div><b id="countNum">0</b>种食物数据</div>
+      <div><b>离线</b>本地计算</div>
+      <div><b>kcal / kJ</b>双单位</div>
+    </div>
+  </div>
+
+  <section class="card">
+    <div class="field">
+      <label class="label" for="food">食物名称</label>
+      <input id="food" type="text" placeholder="试试「米饭」「鸡胸肉」「苹果」" autocomplete="off"
+             aria-describedby="foodHint" role="combobox" aria-expanded="false" aria-controls="suggest">
+      <ul class="suggest" id="suggest" role="listbox" aria-label="食物搜索结果"></ul>
+    </div>
+
+    <div class="row">
+      <div class="amount">
+        <label class="label" for="amount">份量</label>
+        <input id="amount" type="number" inputmode="decimal" value="100" min="0" step="10" aria-describedby="amountHint">
+      </div>
+      <div class="unitwrap">
+        <span class="label">单位</span>
+        <div class="seg" id="unitSeg">
+          <button type="button" data-unit="g" aria-pressed="true">克</button>
+          <button type="button" data-unit="serving" aria-pressed="false">份</button>
+        </div>
+      </div>
+    </div>
+    <p class="hint" id="amountHint"></p>
+
+    <button class="btn" id="calcBtn" type="button">查询热量</button>
+
+    <p class="chips-title">快捷选择</p>
+    <div class="chips" id="chips"></div>
+  </section>
+
+  <section class="result" id="result" role="region" aria-live="polite">
+    <p class="result-cap">估算热量</p>
+    <p class="kcal"><b id="rKcal">0</b><span>kcal</span></p>
+    <p class="kj" id="rKj">≈ 0 kJ</p>
+    <dl class="meta">
+      <div><dt>食物名称</dt><dd id="rName">—</dd></div>
+      <div><dt>份量</dt><dd id="rAmount">—</dd></div>
+      <div><dt>每 100 克</dt><dd id="rPer100">—</dd></div>
+      <div><dt>估算热量</dt><dd id="rTotal">—</dd></div>
+    </dl>
+    <div class="walk" id="rWalk">🚶 约需慢跑 0 分钟消耗</div>
+    <p class="tip" id="rTip"></p>
+  </section>
+
+  <p class="disclaimer">
+    数据基于《中国食物成分表》常见值整理，为可食部估算值。<br>
+    烹饪方式、食材部位与品牌配方会影响实际热量，结果仅供参考，不构成医疗或营养建议。
+  </p>
+  <footer>全部计算在你的浏览器本地完成，不上传任何数据</footer>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  /* 食物数据：k = 每 100 克热量(kcal)，s = 一份的克数，u = 份量单位名，a = 别名 */
+  var FOODS = [
+    // 主食 · 谷薯
+    {n:'米饭(蒸)',        k:116, s:150, u:'碗',  a:['白米饭','米饭']},
+    {n:'糙米饭',          k:112, s:150, u:'碗'},
+    {n:'白米粥',          k:46,  s:300, u:'碗',  a:['粥','稀饭']},
+    {n:'小米粥',          k:46,  s:300, u:'碗'},
+    {n:'馒头',            k:223, s:100, u:'个'},
+    {n:'面条(煮)',        k:110, s:200, u:'碗',  a:['面条','清汤面']},
+    {n:'挂面(干)',        k:346, s:100, u:'份'},
+    {n:'意大利面(干)',    k:351, s:100, u:'份',  a:['意面']},
+    {n:'全麦面包',        k:250, s:35,  u:'片',  a:['面包']},
+    {n:'吐司(白)',        k:280, s:30,  u:'片',  a:['吐司']},
+    {n:'燕麦片(干)',      k:377, s:40,  u:'份',  a:['燕麦','麦片']},
+    {n:'玉米(鲜)',        k:112, s:200, u:'根',  a:['玉米','甜玉米']},
+    {n:'红薯',            k:86,  s:150, u:'个',  a:['地瓜','番薯']},
+    {n:'紫薯',            k:82,  s:150, u:'个'},
+    {n:'土豆',            k:77,  s:150, u:'个',  a:['马铃薯','洋芋']},
+    {n:'山药',            k:57,  s:150, u:'根'},
+    {n:'荞麦面(干)',      k:337, s:100, u:'份'},
+    {n:'粉丝(干)',        k:335, s:100, u:'份'},
+    {n:'方便面',          k:470, s:100, u:'包',  a:['泡面']},
+    {n:'年糕',            k:154, s:100, u:'份'},
+    {n:'猪肉水饺',        k:240, s:20,  u:'个',  a:['饺子','水饺']},
+    {n:'肉包子',          k:227, s:80,  u:'个',  a:['包子']},
+    {n:'油条',            k:388, s:60,  u:'根'},
+    {n:'汤圆',            k:311, s:20,  u:'个',  a:['元宵']},
+    {n:'披萨',            k:260, s:100, u:'块',  a:['比萨','pizza']},
+
+    // 肉蛋水产
+    {n:'鸡胸肉',          k:133, s:150, u:'块',  a:['鸡胸','鸡柳']},
+    {n:'鸡腿',            k:181, s:120, u:'个'},
+    {n:'炸鸡',            k:279, s:80,  u:'块'},
+    {n:'猪里脊',          k:155, s:100, u:'份',  a:['里脊肉']},
+    {n:'瘦猪肉',          k:143, s:100, u:'份',  a:['瘦肉']},
+    {n:'猪五花肉',        k:518, s:100, u:'份',  a:['五花肉']},
+    {n:'牛里脊',          k:107, s:100, u:'份',  a:['牛肉','牛排']},
+    {n:'牛腩',            k:332, s:100, u:'份'},
+    {n:'肥牛卷',          k:280, s:100, u:'份',  a:['肥牛']},
+    {n:'羊肉(瘦)',        k:118, s:100, u:'份',  a:['羊肉']},
+    {n:'培根',            k:181, s:20,  u:'片'},
+    {n:'火腿肠',          k:212, s:45,  u:'根'},
+    {n:'鸡蛋',            k:144, s:50,  u:'个'},
+    {n:'鸡蛋白',          k:60,  s:33,  u:'个',  a:['蛋白']},
+    {n:'鸡蛋黄',          k:328, s:17,  u:'个',  a:['蛋黄']},
+    {n:'鲈鱼',            k:105, s:300, u:'条'},
+    {n:'三文鱼',          k:139, s:100, u:'份',  a:[' salmon','鲑鱼']},
+    {n:'带鱼',            k:127, s:100, u:'份'},
+    {n:'草鱼',            k:113, s:100, u:'份'},
+    {n:'鳕鱼',            k:88,  s:100, u:'份'},
+    {n:'明虾',            k:85,  s:100, u:'份',  a:['虾','海虾']},
+    {n:'金枪鱼罐头',      k:99,  s:100, u:'份',  a:['金枪鱼']},
+
+    // 豆奶制品
+    {n:'北豆腐',          k:98,  s:100, u:'份',  a:['老豆腐','豆腐']},
+    {n:'南豆腐',          k:57,  s:100, u:'份',  a:['嫩豆腐']},
+    {n:'豆干',            k:140, s:50,  u:'块',  a:['香干']},
+    {n:'腐竹',            k:459, s:100, u:'份'},
+    {n:'黄豆(干)',        k:390, s:100, u:'份',  a:['大豆']},
+    {n:'豆浆(无糖)',      k:31,  s:300, u:'杯',  a:['豆浆']},
+    {n:'全脂牛奶',        k:65,  s:250, u:'杯',  a:['牛奶','纯牛奶']},
+    {n:'脱脂牛奶',        k:35,  s:250, u:'杯',  a:['脱脂奶']},
+    {n:'酸奶(全脂)',      k:72,  s:100, u:'杯',  a:['酸奶']},
+    {n:'希腊酸奶',        k:59,  s:100, u:'杯'},
+    {n:'奶酪',            k:328, s:20,  u:'片',  a:['芝士','起司']},
+    {n:'冰淇淋',          k:127, s:50,  u:'球'},
+
+    // 蔬菜菌藻
+    {n:'西兰花',          k:36,  s:150, u:'份',  a:['西蓝花','青花菜']},
+    {n:'菠菜',            k:28,  s:150, u:'份'},
+    {n:'生菜',            k:15,  s:100, u:'份'},
+    {n:'大白菜',          k:17,  s:150, u:'份',  a:['白菜']},
+    {n:'娃娃菜',          k:13,  s:150, u:'份'},
+    {n:'番茄',            k:15,  s:150, u:'个',  a:['西红柿']},
+    {n:'圣女果',          k:22,  s:100, u:'份',  a:['小番茄','千禧果']},
+    {n:'黄瓜',            k:16,  s:200, u:'根'},
+    {n:'胡萝卜',          k:39,  s:100, u:'根'},
+    {n:'茄子',            k:21,  s:150, u:'个'},
+    {n:'青椒',            k:22,  s:100, u:'个',  a:['柿子椒']},
+    {n:'洋葱',            k:40,  s:100, u:'个'},
+    {n:'南瓜',            k:26,  s:150, u:'份'},
+    {n:'冬瓜',            k:12,  s:150, u:'份'},
+    {n:'苦瓜',            k:19,  s:150, u:'根'},
+    {n:'豆角',            k:30,  s:150, u:'份',  a:['四季豆']},
+    {n:'秋葵',            k:37,  s:100, u:'份'},
+    {n:'芦笋',            k:22,  s:100, u:'份'},
+    {n:'金针菇',          k:32,  s:100, u:'份'},
+    {n:'香菇(鲜)',        k:26,  s:100, u:'份',  a:['香菇']},
+    {n:'黑木耳(干)',      k:265, s:10,  u:'份',  a:['木耳']},
+    {n:'海带(鲜)',        k:13,  s:100, u:'份',  a:['海带']},
+    {n:'芹菜',            k:14,  s:100, u:'份'},
+    {n:'白萝卜',          k:16,  s:150, u:'份',  a:['萝卜']},
+    {n:'韭菜',            k:26,  s:100, u:'份'},
+
+    // 水果
+    {n:'苹果',            k:53,  s:200, u:'个'},
+    {n:'香蕉',            k:93,  s:120, u:'根'},
+    {n:'橙子',            k:48,  s:200, u:'个',  a:['橙']},
+    {n:'橘子',            k:44,  s:150, u:'个',  a:['桔子']},
+    {n:'葡萄',            k:45,  s:150, u:'串'},
+    {n:'西瓜',            k:31,  s:200, u:'块'},
+    {n:'草莓',            k:32,  s:150, u:'份'},
+    {n:'蓝莓',            k:57,  s:100, u:'份'},
+    {n:'猕猴桃',          k:61,  s:90,  u:'个',  a:['奇异果']},
+    {n:'梨',              k:51,  s:200, u:'个'},
+    {n:'桃',              k:42,  s:200, u:'个',  a:['桃子','水蜜桃']},
+    {n:'芒果',            k:60,  s:200, u:'个'},
+    {n:'菠萝',            k:44,  s:150, u:'份',  a:['凤梨']},
+    {n:'火龙果',          k:55,  s:200, u:'个'},
+    {n:'柚子',            k:42,  s:200, u:'份'},
+    {n:'哈密瓜',          k:34,  s:200, u:'块'},
+    {n:'榴莲',            k:150, s:100, u:'瓣'},
+    {n:'牛油果',          k:171, s:150, u:'个',  a:['鳄梨']},
+    {n:'车厘子',          k:63,  s:100, u:'份',  a:['樱桃']},
+    {n:'柠檬',            k:37,  s:50,  u:'个'},
+
+    // 坚果零食甜点
+    {n:'核桃仁',          k:646, s:20,  u:'份',  a:['核桃']},
+    {n:'杏仁',            k:578, s:20,  u:'份',  a:['巴旦木']},
+    {n:'腰果',            k:552, s:20,  u:'份'},
+    {n:'花生(炒)',        k:589, s:30,  u:'份',  a:['花生']},
+    {n:'瓜子仁',          k:606, s:20,  u:'份',  a:['瓜子','葵花籽']},
+    {n:'开心果',          k:562, s:20,  u:'份'},
+    {n:'薯片',            k:548, s:70,  u:'包'},
+    {n:'饼干',            k:435, s:10,  u:'片'},
+    {n:'巧克力',          k:589, s:10,  u:'块'},
+    {n:'奶油蛋糕',        k:348, s:100, u:'块',  a:['蛋糕']},
+    {n:'蛋挞',            k:330, s:70,  u:'个'},
+
+    // 饮品
+    {n:'可乐',            k:43,  s:330, u:'罐',  a:['可口可乐']},
+    {n:'雪碧',            k:40,  s:330, u:'罐'},
+    {n:'橙汁',            k:45,  s:250, u:'杯',  a:['果汁']},
+    {n:'美式咖啡',        k:1,   s:350, u:'杯',  a:['黑咖啡','咖啡']},
+    {n:'拿铁',            k:47,  s:350, u:'杯'},
+    {n:'奶茶(全糖)',      k:90,  s:500, u:'杯',  a:['奶茶']},
+    {n:'啤酒',            k:32,  s:500, u:'瓶'},
+    {n:'红酒',            k:85,  s:150, u:'杯'},
+    {n:'白酒(52°)',       k:311, s:50,  u:'两',  a:['白酒']},
+
+    // 油脂调味
+    {n:'花生油',          k:899, s:10,  u:'勺',  a:['食用油','植物油']},
+    {n:'橄榄油',          k:899, s:10,  u:'勺'},
+    {n:'黄油',            k:888, s:10,  u:'块'},
+    {n:'沙拉酱',          k:680, s:15,  u:'勺',  a:['蛋黄酱','千岛酱']},
+    {n:'番茄酱',          k:81,  s:15,  u:'勺'},
+    {n:'白砂糖',          k:400, s:10,  u:'勺',  a:['糖','砂糖']},
+    {n:'蜂蜜',            k:321, s:15,  u:'勺'}
+  ];
+
+  var SHORTCUTS = ['米饭(蒸)', '鸡蛋', '鸡胸肉', '全脂牛奶', '苹果', '西兰花', '红薯', '馒头'];
+
+  var $ = function (id) { return document.getElementById(id); };
+  var foodInput = $('food'), amountInput = $('amount'), suggestBox = $('suggest');
+  var segBtns = $('unitSeg').getElementsByTagName('button');
+  var current = null;      // 当前选中的食物对象
+  var unit = 'g';          // g | serving
+
+  document.getElementById('countNum').textContent = FOODS.length;
+
+  /* ---------- 快捷标签 ---------- */
+  SHORTCUTS.forEach(function (name) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chip';
+    b.textContent = name.replace(/\(.*\)/, '');
+    b.onclick = function () {
+      selectFood(findByName(name));
+      calc();
+    };
+    $('chips').appendChild(b);
+  });
+
+  /* ---------- 搜索 ---------- */
+  function match(keyword) {
+    var q = keyword.trim().toLowerCase();
+    if (!q) return [];
+    var hits = [], exact = [];
+    FOODS.forEach(function (f) {
+      var names = [f.n].concat(f.a || []);
+      for (var i = 0; i < names.length; i++) {
+        var nn = names[i].toLowerCase();
+        if (nn === q) { exact.push(f); return; }
+        if (nn.indexOf(q) !== -1) { hits.push(f); return; }
+      }
+    });
+    return exact.concat(hits).slice(0, 8);
+  }
+
+  function renderSuggest(list, keyword) {
+    suggestBox.innerHTML = '';
+    if (!list.length) {
+      suggestBox.classList.add('show');
+      suggestBox.innerHTML = '<li class="empty">没有找到「' + keyword + '」<br>试试「米饭」「鸡蛋」「苹果」</li>';
+      foodInput.setAttribute('aria-expanded', 'true');
+      return;
+    }
+    list.forEach(function (f) {
+      var li = document.createElement('li');
+      li.setAttribute('role', 'option');
+      li.innerHTML = '<span>' + highlight(f.n, keyword) + '</span><span class="k">' +
+                     f.k + ' kcal/100g</span>';
+      li.onclick = function () { selectFood(f); calc(); };
+      suggestBox.appendChild(li);
+    });
+    suggestBox.classList.add('show');
+    foodInput.setAttribute('aria-expanded', 'true');
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/[&<>"']/g, function (c) {
+      return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'}[c];
+    });
+  }
+
+  function highlight(text, keyword) {
+    if (!keyword) return escapeHtml(text);
+    var kw = keyword.trim();
+    var i = text.toLowerCase().indexOf(kw.toLowerCase());
+    if (i < 0) return escapeHtml(text);
+    return escapeHtml(text.slice(0, i)) + '<b style="color:#16a34a">' +
+           escapeHtml(text.slice(i, i + kw.length)) + '</b>' +
+           escapeHtml(text.slice(i + kw.length));
+  }
+
+  function closeSuggest() {
+    suggestBox.classList.remove('show');
+    foodInput.setAttribute('aria-expanded', 'false');
+  }
+
+  function findByName(name) {
+    for (var i = 0; i < FOODS.length; i++) if (FOODS[i].n === name) return FOODS[i];
+    return null;
+  }
+
+  /* ---------- 选择食物 ---------- */
+  function selectFood(f) {
+    if (!f) return;
+    current = f;
+    foodInput.value = f.n;
+    closeSuggest();
+
+    // 没有「一份」定义时，禁用份单位
+    segBtns[1].disabled = !f.s;
+    if (!f.s && unit === 'serving') setUnit('g');
+    if (f.s && (unit === 'serving' || amountInput.value === '100')) {
+      setUnit('serving');
+      amountInput.value = 1;
+    }
+    updateHint();
+  }
+
+  function syncSeg() {
+    for (var i = 0; i < segBtns.length; i++) {
+      segBtns[i].setAttribute('aria-pressed', String(segBtns[i].getAttribute('data-unit') === unit));
+    }
+  }
+
+  function setUnit(u) {
+    unit = u;
+    syncSeg();
+    if (current) {
+      // 单位切换时换算已有数值，避免重复输入
+      if (u === 'serving' && current.s) amountInput.value = round(parseFloat(amountInput.value) / current.s, 2) || 1;
+      if (u === 'g' && current.s) amountInput.value = round(parseFloat(amountInput.value) * current.s, 0) || current.s;
+    }
+    updateHint();
+  }
+
+  function updateHint() {
+    var h = $('amountHint');
+    if (!current) {
+      h.textContent = '可先选食物，默认为 100 克';
+      return;
+    }
+    if (unit === 'serving') {
+      h.textContent = '1 ' + current.u + ' ≈ ' + current.s + ' 克';
+    } else {
+      h.textContent = current.s
+        ? '参考份量：1 ' + current.u + ' ≈ ' + current.s + ' 克'
+        : '该食物按重量计算';
+    }
+  }
+
+  function round(v, d) {
+    var p = Math.pow(10, d);
+    return Math.round(v * p) / p;
+  }
+
+  /* ---------- 计算 ---------- */
+  function gramsOf(f, value) {
+    return unit === 'serving' ? value * f.s : value;
+  }
+
+  function calc() {
+    var tipEl = $('rTip');
+    var list = match(foodInput.value);
+
+    // 未从下拉选中时，自动采用搜索结果第一条
+    if (!current || current.n !== foodInput.value) {
+      if (list.length) { current = list[0]; foodInput.value = current.n; }
+    }
+    if (!current) {
+      $('result').classList.remove('show');
+      $('amountHint').innerHTML = '<span class="err">请从列表中选择一种食物</span>';
+      foodInput.focus();
+      return;
+    }
+    selectFoodSilent(current);
+
+    var value = parseFloat(amountInput.value);
+    if (!value || value <= 0) {
+      $('amountHint').innerHTML = '<span class="err">请输入大于 0 的份量</span>';
+      amountInput.focus();
+      return;
+    }
+
+    var grams = gramsOf(current, value);
+    var kcal = Math.round(current.k * grams / 100);
+    var kj = Math.round(kcal * 4.184);
+    var min = Math.max(1, Math.round(kcal / 8.5)); // 60kg 成人慢跑约 8.5 kcal/分钟
+
+    $('rKcal').textContent = kcal;
+    $('rKj').textContent = '≈ ' + kj + ' kJ';
+    $('rName').textContent = current.n;
+    $('rAmount').textContent = unit === 'serving'
+      ? value + ' ' + current.u + '（≈ ' + round(grams, 0) + ' 克）'
+      : round(grams, 0) + ' 克';
+    $('rPer100').textContent = current.k + ' kcal / 100 克';
+    $('rTotal').textContent = kcal + ' kcal（' + kj + ' kJ）';
+    $('rWalk').textContent = '🚶 约需慢跑 ' + min + ' 分钟才能消耗掉';
+
+    var tips = [];
+    if (current.k <= 30) tips.push('低能量密度食物，饱腹感强，可放心搭配。');
+    else if (current.k >= 400) tips.push('能量密度较高，注意控制份量。');
+    if (grams >= 300 && current.k <= 60) tips.push('份量充足，适合作为一餐的蔬菜基底。');
+    tipEl.textContent = tips.length ? '💡 ' + tips.join(' ') : '💡 搭配蔬菜与优质蛋白，营养更均衡。';
+
+    $('result').classList.add('show');
+    updateHint();
+  }
+
+  // 选中态同步（不覆盖用户输入）
+  function selectFoodSilent(f) {
+    segBtns[1].disabled = !f.s;
+    if (!f.s && unit === 'serving') {
+      unit = 'g';
+      syncSeg();
+    }
+  }
+
+  /* ---------- 事件绑定 ---------- */
+  var timer = null;
+  foodInput.addEventListener('input', function () {
+    current = null;
+    var kw = foodInput.value.trim();
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      if (!kw) { closeSuggest(); return; }
+      renderSuggest(match(kw), kw);
+    }, 80);
+  });
+  foodInput.addEventListener('focus', function () {
+    var kw = foodInput.value.trim();
+    if (kw) renderSuggest(match(kw), kw);
+  });
+  foodInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      calc();
+    } else if (e.key === 'Escape') {
+      closeSuggest();
+    }
+  });
+  document.addEventListener('click', function (e) {
+    if (e.target !== foodInput && e.target.parentNode !== suggestBox) closeSuggest();
+  });
+
+  amountInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') { e.preventDefault(); calc(); }
+  });
+
+  for (var i = 0; i < segBtns.length; i++) {
+    (function (btn) {
+      btn.addEventListener('click', function () {
+        if (btn.disabled) return;
+        setUnit(btn.getAttribute('data-unit'));
+      });
+    })(segBtns[i]);
+  }
+
+  $('calcBtn').addEventListener('click', calc);
+  updateHint();
+})();
+</script>
+</body>
+</html>
